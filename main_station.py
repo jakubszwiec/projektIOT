@@ -136,14 +136,14 @@ def print_log_to_window():
 
 
 def create_main_window():
-    window.geometry("250x100")
+    window.geometry("300x200")
     window.title("RECEIVER")
     label = tkinter.Label(window, text="Listening to the MQTT")
     exit_button = tkinter.Button(window, text="Stop", command=window.quit)
     print_log_button = tkinter.Button(
         window, text="Print log", command=print_log_to_window)
     register_button = tkinter.Button(
-        window, text="Register worker card", command=thread_register_card)
+        window, text="Register", command=thread_register_card)
 
     label.pack()
     exit_button.pack(side="right")
