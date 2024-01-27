@@ -18,7 +18,7 @@ WHITE = (0,0,0)
 # The terminal ID - can be any string.
 terminal_id = "Station 0A"
 # The broker name or IP address.
-broker = "localhost"
+broker = "10.108.33.125"
 # broker = "127.0.0.1"
 # broker = "10.0.0.1"
 # The MQTT client.
@@ -53,12 +53,15 @@ def draw_text(message:str):
 
 #function to handle leds'
 def led_change(color_code: tuple[int,int,int]):
+    pixels = neopixel.NeoPixel(board.D18, 8, brightness=1.0/32, auto_write=False)
     pixels.fill(color_code)
     pixels.show()
 
 #send data after reading card
 def call_main_station(worker_name, read_time):
-    client.publish("worker/name", read_time + "." + worker_name + "." + terminal_id)
+    string_list = map(str, worker_name)
+    result_string = "".join(string_list)
+    client.publish("worker/name", read_time + "." + result_string + "." + terminal_id)
 
 # receive from main station if access is granted and handle it
 def process_message(client, userdata, message):
@@ -77,7 +80,10 @@ def process_message(client, userdata, message):
     elif message_decoded[0] == "Denied":
         print("Access denied")
         led_change(RED)
+        buzzer(True)
         draw_text("Access Denied")
+        time.sleep(0.5)
+        buzzer(False)
         time.sleep(1)
         led_change(YELLOW)
     draw_text("Apply Card")

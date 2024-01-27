@@ -21,7 +21,7 @@ WHITE = (0,0,0)
 # The terminal ID - can be any string.
 terminal_id = "MAIN"
 # The broker name or IP address.
-broker = "localhost"
+broker = "10.108.33.125"
 # broker = "127.0.0.1"
 # broker = "10.0.0.1"
 # The MQTT client.
@@ -38,7 +38,7 @@ def redButtonPressedCallback(channel):
     global execute
     execute = False
 
-#handle unblocking stations/jednak skip to
+#handle unblocking stations/nie uzywane
 def greenButtonPressedCallback(channel):
     # connect to database.
     connention = sqlite3.connect("workers.db")
@@ -59,6 +59,7 @@ def buzzer(state):
 
 #function to handle leds'
 def led_change(color_code: tuple[int,int,int]):
+    pixels = neopixel.NeoPixel(board.D18, 8, brightness=1.0/32, auto_write=False)
     pixels.fill(color_code)
     pixels.show()
 
@@ -75,8 +76,6 @@ def process_message(client, userdata, message):
     # Print message to console.
     if message_decoded[1] != "Online" and message_decoded[1] != "Offline":
         led_change(BLUE)
-        print(time.ctime() + ", " +
-              message_decoded[1] + " used the RFID card.")#message[time,worker_id,terminal_id]
 
         # connect to database.
         connention = sqlite3.connect("workers.db")
@@ -85,16 +84,21 @@ def process_message(client, userdata, message):
         cursor.execute("SELECT * FROM workers_allowed")
         allowed_workers = cursor.fetchall()
         #check if worker is allowed access
-        if message_decoded[1] in allowed_workers:
-            allowed_access = "Allowed"
-        else:
-            allowed_access = "Denied"
+        allowed_access = "Denied"
+        for worker in allowed_workers:
+            worker_id = str(worker)
+            if message_decoded[1] == worker_id:
+                allowed_access = "Allowed"
+            else:
+                allowed_access = "Denied"
         #log the event
         cursor.execute("INSERT INTO workers_log VALUES (?,?,?,?)",
                        (message_decoded[0], message_decoded[1], message_decoded[2],allowed_access))
         connention.commit()
         connention.close()
         led_change(WHITE)
+        print(time.ctime() + ", " +
+              message_decoded[1] + " used the RFID card and was"+allowed_access+"access")#message[time,worker_id,terminal_id]
         #return info about access
         call_access_station(message_decoded[2], allowed_access)
     else:
@@ -119,7 +123,7 @@ def print_log_to_window():
 
     for log_entry in log_entries:
         labels_log_entry.append(tkinter.Label(print_log_window, text=(
-            "On %s, %s used the terminal %s, and was %s access." % (log_entry[0], log_entry[1], log_entry[2]))))
+            "On %s, %s used the terminal %s, and was %s access." % (log_entry[0], log_entry[1], log_entry[2], log_entry[3]))))
 
     for label in labels_log_entry:
         label.pack(side="top")
@@ -167,16 +171,19 @@ def loop():
             (status2, uid) = MIFAREReader.MFRC522_Anticoll()
             if status2 == MIFAREReader.MI_OK:
                 cardApplied = True
-                led_change(GREEN)
-                buzzer(True)
+                
                 register_card(uid)
                 #handle registration of card
 
 def register_card(worker):
+    led_change(GREEN)
+    buzzer(True)
+    string_list = map(str, worker)
+    result_string = "".join(string_list)
     connention = sqlite3.connect("workers.db")
     cursor = connention.cursor()
     cursor.execute("INSERT INTO workers_allowed VALUES (?)",
-                       (worker))
+                       (result_string,))
     connention.commit()
     connention.close()
     time.sleep(0.5)
@@ -192,8 +199,8 @@ def disconnect_from_broker():
 def run_sender():
     GPIO.add_event_detect(buttonRed, GPIO.FALLING, callback=redButtonPressedCallback, bouncetime=200)
     #GPIO.add_event_detect(buttonGreen, GPIO.FALLING, callback=greenButtonPressedCallback, bouncetime=200)
-    disp.Init()
-    disp.clear()
+    #disp.Init()
+    #disp.clear()
     connect_to_broker()
 
     create_main_window()
@@ -201,8 +208,8 @@ def run_sender():
     window.mainloop()
 
     disconnect_from_broker()
-    disp.clear()
-    disp.reset()
+    #disp.clear()
+    #disp.reset()
     GPIO.cleanup()
 
 
